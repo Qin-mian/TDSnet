@@ -5,18 +5,8 @@ import torch.nn.functional as F
 """
 author: Qmian
 date: 2024-10-07
-description: TDSNet
+description: TDSNet for Breast Cancer Classification
 """
-
-def cov7x7(in_planes, out_planes, stride=1, groups=1, dilation=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=7, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
-
-def cov3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
-
-
 class DDModule(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(DDModule, self).__init__()
@@ -119,16 +109,6 @@ class TDSnet(nn.Module):
 
         self.block5 = DDModule(base_kernel*64, base_kernel*8)
 
-        # 可行变卷积
-        self.block6 = SeparableConv(base_kernel*64, 512, kernel_size=3, padding=1)
-
-        # SEB注意力
-        self.block7 = SEBnet(512, 16)
-
-        # 全局平均池化
-        self.gap  = nn.AdaptiveAvgPool2d(1)
-        self.bn2 = nn.BatchNorm2d(512)
-        self.fc = nn.Linear(512, num_classes)
 
         # 卷积支路
         self.conv1 = nn.Conv2d(32, base_kernel,kernel_size=7, stride=1, padding=3, bias=False)
@@ -148,6 +128,17 @@ class TDSnet(nn.Module):
         self.bn8 = nn.BatchNorm2d(base_kernel*8)
         self.conv7 = nn.Conv2d(base_kernel*8, base_kernel*8, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn9 = nn.BatchNorm2d(base_kernel*8)
+
+        # 可行变卷积
+        self.block6 = SeparableConv(base_kernel*64, 512, kernel_size=3, padding=1)
+
+        # SEB注意力
+        self.block7 = SEBnet(512, 16)
+        self.bn2 = nn.BatchNorm2d(512)
+        # 全局平均池化
+        self.gap  = nn.AdaptiveAvgPool2d(base_kernel//32)
+        # 全连接层
+        self.fc = nn.Linear(512*(base_kernel//32)*(base_kernel//32), num_classes)
 
     def forward(self,x):
         x = self.ReLu(self.bn1(self.conv0(x)))
